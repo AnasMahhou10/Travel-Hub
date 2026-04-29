@@ -11,13 +11,13 @@ NEO4J_URL = os.getenv("NEO4J_URL", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASS = os.getenv("NEO4J_PASS", "password")
 
-#Redis
+# Redis
 redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
 
 def get_redis():
     return redis_client
 
-#MongoDB
+# MongoDB
 mongo_client = AsyncIOMotorClient(MONGO_URL)
 db = mongo_client[MONGO_DB]
 offers_collection = db["offers"]
@@ -25,7 +25,7 @@ offers_collection = db["offers"]
 def get_mongo_offers():
     return offers_collection
 
-#Neo4j
+# Neo4j
 neo4j_driver = AsyncGraphDatabase.driver(
     NEO4J_URL,
     auth=(NEO4J_USER, NEO4J_PASS)
