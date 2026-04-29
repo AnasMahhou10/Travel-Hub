@@ -1,0 +1,8 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+motor==3.6.0
+pymongo==4.9.2
+redis==5.0.4
+neo4j==5.19.0
+pydantic==2.7.1
+python-multipart==0.0.9

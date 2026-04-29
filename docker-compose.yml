@@ -1,0 +1,74 @@
+
+services:
+
+  # ── API FastAPI ──────────────────────────────────────────────────────────────
+  api:
+    build: .
+    container_name: sth-api-v1
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379
+      MONGO_URL: mongodb://mongo:27017
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASS: password
+      MONGO_DB: sth
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./app:/code/app   # hot-reload en développement
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sth-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: sth-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Neo4j ────────────────────────────────────────────────────────────────────
+  neo4j:
+    image: neo4j:5
+    container_name: sth-neo4j
+    ports:
+      - "7474:7474"   # browser
+      - "7687:7687"   # bolt
+    environment:
+      NEO4J_AUTH: neo4j/password
+    volumes:
+      - neo4j_data:/data
+      - ./scripts/neo4j-init.cypher:/var/lib/neo4j/import/init.cypher
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  mongo_data:
+  neo4j_data:

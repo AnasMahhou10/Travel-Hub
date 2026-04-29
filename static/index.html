@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SupDeVinci Travel Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f7f6f3;
+      --surface: #ffffff;
+      --surface2: #f0efe9;
+      --border: rgba(0, 0, 0, 0.12);
+      --border2: rgba(0, 0, 0, 0.22);
+      --text: #1a1a18;
+      --text2: #6b6b66;
+      --accent: #1a1a18;
+      --hit-bg: #eaf3de;
+      --hit-text: #3b6d11;
+      --miss-bg: #faeeda;
+      --miss-text: #854f0b;
+      --err-bg: #fcebeb;
+      --err-text: #a32d2d;
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    header p {
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 5px;
+    }
+
+    .dots {
+      display: inline-flex;
+      gap: 6px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot-red {
+      background: #e24b4a;
+    }
+
+    .dot-mongo {
+      background: #639922;
+    }
+
+    .dot-neo {
+      background: #378add;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 1.5rem;
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 4px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text2);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+    }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .tab:hover:not(.active) {
+      color: var(--text);
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 90px;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-group input,
+    .form-group select {
+      font-size: 14px;
+      padding: 9px 12px;
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--text);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      border: 0.5px solid var(--border2);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      background: var(--surface2);
+    }
+
+    .btn-primary {
+      background: var(--text);
+      color: #fff;
+      border-color: var(--text);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.82;
+    }
+
+    .btn-small {
+      padding: 7px 10px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .results {
+      margin-top: 0.5rem;
+    }
+
+    .meta {
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .badge-hit {
+      background: var(--hit-bg);
+      color: var(--hit-text);
+    }
+
+    .badge-miss {
+      background: var(--miss-bg);
+      color: var(--miss-text);
+    }
+
+    .offer-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .offer-route {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .offer-sub {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .offer-leg {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .offer-price {
+      font-size: 20px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .offer-currency {
+      font-size: 12px;
+      color: var(--text2);
+      text-align: right;
+    }
+
+    .offer-actions {
+      text-align: right;
+    }
+
+    .detail-box {
+      margin-top: 1rem;
+    }
+
+    .detail-json {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--text2);
+      padding: 16px 0;
+      text-align: center;
+    }
+
+    .error {
+      font-size: 13px;
+      color: var(--err-text);
+      padding: 12px 16px;
+      background: var(--err-bg);
+      border-radius: var(--radius-sm);
+    }
+
+    .reco-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .reco-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 12px;
+      text-align: center;
+    }
+
+    .reco-code {
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .reco-name {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .reco-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 10px;
+    }
+
+    .reco-fill {
+      height: 3px;
+      background: var(--text);
+      border-radius: 2px;
+    }
+
+    .reco-score {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 5px;
+    }
+
+    .token-label {
+      font-size: 11px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+
+    .token-box {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      color: var(--text);
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .stat-val {
+      font-size: 22px;
+      font-weight: 500;
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 3px;
+    }
+
+    .metrics-box {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 1rem;
+    }
+
+    .metrics-box pre {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .session-info {
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+
+    .session-info strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 520px) {
+      .form-row {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .form-row> :last-child {
+        grid-column: span 2;
+      }
+
+      .tabs .tab {
+        font-size: 12px;
+        padding: 7px 8px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <header>
+      <h1>
+        SupDeVinci Travel Hub
+        <span class="dots">
+          <span class="dot dot-red" title="Redis"></span>
+          <span class="dot dot-mongo" title="MongoDB"></span>
+          <span class="dot dot-neo" title="Neo4j"></span>
+        </span>
+      </h1>
+      <p>Interface de test — API polyglotte Redis · MongoDB · Neo4j</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('search', this)">Recherche de vols</button>
+      <button class="tab" onclick="switchTab('reco', this)">Recommandations</button>
+      <button class="tab" onclick="switchTab('login', this)">Connexion</button>
+      <button class="tab" onclick="switchTab('stats', this)">Stats</button>
+    </div>
+
+    <!-- ── SEARCH ───────────────────────────────────────────────────── -->
+    <div id="panel-search" class="panel active">
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Départ (IATA)</label>
+            <input id="s-from" type="text" value="PAR" maxlength="3" placeholder="PAR"
+              oninput="this.value=this.value.toUpperCase()" />
+          </div>
+          <div class="form-group">
+            <label>Destination (IATA)</label>
+            <input id="s-to" type="text" value="TYO" maxlength="3" placeholder="TYO"
+              oninput="this.value=this.value.toUpperCase()" />
+          </div>
+          <div class="form-group">
+            <label>Limite</label>
+            <input id="s-limit" type="number" value="5" min="1" max="50" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Recherche texte provider (optionnel)</label>
+          <input id="s-q" type="text" placeholder="ex: AirZen" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="searchOffers()">Rechercher</button>
+          <button class="btn" onclick="document.getElementById('search-results').innerHTML=''">Effacer</button>
+        </div>
+        <div class="form-group detail-box">
+          <label>ID offre</label>
+          <input id="offer-id" type="text" placeholder="Coller un id ou cliquer sur Détails" />
+        </div>
+        <div class="btn-row">
+          <button class="btn" onclick="getOfferById()">Tester GET /offers/{id}</button>
+          <button class="btn" onclick="document.getElementById('offer-detail').innerHTML=''">Effacer détail</button>
+        </div>
+      </div>
+      <div id="search-results" class="results"></div>
+      <div id="offer-detail" class="results"></div>
+    </div>
+
+    <!-- ── RECO ────────────────────────────────────────────────────── -->
+    <div id="panel-reco" class="panel">
+      <div class="card">
+        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="form-group" style="flex:1; min-width:120px;">
+            <label>Ville (IATA)</label>
+            <input id="r-city" type="text" value="PAR" maxlength="3" placeholder="PAR"
+              oninput="this.value=this.value.toUpperCase()" />
+          </div>
+          <div class="form-group" style="width:90px;">
+            <label>Nombre</label>
+            <input id="r-k" type="number" value="3" min="1" max="10" />
+          </div>
+          <button class="btn btn-primary" onclick="getReco()">Obtenir</button>
+        </div>
+      </div>
+      <div id="reco-results"></div>
+    </div>
+
+    <!-- ── LOGIN ──────────────────────────────────────────────────── -->
+    <div id="panel-login" class="panel">
+      <div class="card">
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>User ID</label>
+          <input id="l-userid" type="text" value="u42" placeholder="u42" />
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()">Se connecter</button>
+      </div>
+      <div id="login-results"></div>
+    </div>
+
+    <!-- ── STATS ──────────────────────────────────────────────────── -->
+    <div id="panel-stats" class="panel">
+      <div class="card">
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="getStats()">Top destinations</button>
+          <button class="btn" onclick="getMetrics()">Métriques Prometheus</button>
+          <button class="btn" onclick="document.getElementById('stats-results').innerHTML=''">Effacer</button>
+        </div>
+      </div>
+      <div id="stats-results"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const API = 'http://localhost:8000';
+
+    function switchTab(name, el) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    function loading(id) {
+      document.getElementById(id).innerHTML = '<p class="status">Chargement...</p>';
+    }
+
+    function setError(id, msg) {
+      document.getElementById(id).innerHTML = '<p class="error">' + msg + '</p>';
+    }
+
+    async function searchOffers() {
+      const from = document.getElementById('s-from').value.toUpperCase();
+      const to = document.getElementById('s-to').value.toUpperCase();
+      const limit = document.getElementById('s-limit').value;
+      const q = document.getElementById('s-q').value;
+      loading('search-results');
+
+      let url = API + '/offers?from=' + from + '&to=' + to + '&limit=' + limit;
+      if (q) url += '&q=' + encodeURIComponent(q);
+
+      const t0 = Date.now();
+      try {
+        const r = await fetch(url);
+        const ms = Date.now() - t0;
+        const hit = ms < 80;
+        if (!r.ok) { const e = await r.json(); setError('search-results', e.detail || 'Erreur serveur'); return; }
+        const data = await r.json();
+        if (!data.length) { document.getElementById('search-results').innerHTML = '<p class="status">Aucune offre trouvée.</p>'; return; }
+
+        let html = '<div class="meta">' + data.length + ' offre(s) · ' + ms + ' ms <span class="badge ' + (hit ? 'badge-hit">cache HIT' : 'badge-miss">cache MISS') + '</span></div>';
+        data.forEach(o => {
+          html += '<div class="offer-card"><div>';
+          html += '<div class="offer-route">' + o.from + ' → ' + o.to + '</div>';
+          html += '<div class="offer-sub">' + o.provider + (o.departDate ? ' · ' + o.departDate.slice(0, 10) : '') + '</div>';
+          if (o.hotel) html += '<div class="offer-leg">Hôtel : ' + o.hotel.name + ' (' + o.hotel.nights + ' nuits)</div>';
+          if (o.activity) html += '<div class="offer-leg">Activité : ' + o.activity.title + '</div>';
+          html += '</div><div class="offer-actions"><div class="offer-price">' + Number(o.price).toFixed(2) + '</div><div class="offer-currency">' + o.currency + '</div>';
+          html += '<button class="btn btn-small" onclick="selectOffer(\'' + o.id + '\')">Détails</button></div></div>';
+        });
+        document.getElementById('search-results').innerHTML = html;
+      } catch (e) {
+        setError('search-results', 'Impossible de contacter l\'API. Vérifiez que docker-compose up est lancé.');
+      }
+    }
+
+    function selectOffer(id) {
+      document.getElementById('offer-id').value = id;
+      getOfferById();
+    }
+
+    async function getOfferById() {
+      const id = document.getElementById('offer-id').value.trim();
+      if (!id) {
+        setError('offer-detail', 'Renseignez un ID offre.');
+        return;
+      }
+      loading('offer-detail');
+      const t0 = Date.now();
+      try {
+        const r = await fetch(API + '/offers/' + encodeURIComponent(id));
+        const ms = Date.now() - t0;
+        const data = await r.json();
+        if (!r.ok) { setError('offer-detail', data.detail || 'Erreur'); return; }
+        document.getElementById('offer-detail').innerHTML =
+          '<div class="meta">GET /offers/' + id + ' · ' + ms + ' ms</div>' +
+          '<pre class="detail-json">' + JSON.stringify(data, null, 2) + '</pre>';
+      } catch (e) {
+        setError('offer-detail', 'Impossible de contacter l\'API.');
+      }
+    }
+
+    async function getReco() {
+      const city = document.getElementById('r-city').value.toUpperCase();
+      const k = document.getElementById('r-k').value;
+      loading('reco-results');
+      try {
+        const r = await fetch(API + '/reco?city=' + city + '&k=' + k);
+        if (!r.ok) { const e = await r.json(); setError('reco-results', e.detail || 'Erreur'); return; }
+        const data = await r.json();
+        let html = '<div class="reco-grid">';
+        data.forEach(d => {
+          const pct = Math.round(d.score * 100);
+          html += '<div class="reco-card">';
+          html += '<div class="reco-code">' + d.city + '</div>';
+          html += '<div class="reco-name">' + (d.name || '') + '</div>';
+          html += '<div class="reco-bar"><div class="reco-fill" style="width:' + pct + '%"></div></div>';
+          html += '<div class="reco-score">score ' + d.score.toFixed(2) + '</div></div>';
+        });
+        html += '</div>';
+        document.getElementById('reco-results').innerHTML = html;
+      } catch (e) {
+        setError('reco-results', 'Impossible de contacter l\'API.');
+      }
+    }
+
+    async function doLogin() {
+      const userId = document.getElementById('l-userid').value;
+      loading('login-results');
+      try {
+        const r = await fetch(API + '/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
+        const data = await r.json();
+        if (!r.ok) { setError('login-results', data.detail || 'Erreur'); return; }
+        document.getElementById('login-results').innerHTML =
+          '<div class="card">' +
+          '<p class="session-info">Session créée pour <strong>' + userId + '</strong> · expire dans ' + data.expires_in + ' secondes</p>' +
+          '<div class="token-label">Token stocké dans Redis (clé : session:&lt;token&gt;)</div>' +
+          '<div class="token-box">' + data.token + '</div>' +
+          '</div>';
+      } catch (e) {
+        setError('login-results', 'Impossible de contacter l\'API.');
+      }
+    }
+
+    async function getStats() {
+      loading('stats-results');
+      try {
+        const r = await fetch(API + '/stats/top-destinations');
+        const data = await r.json();
+        if (!r.ok) { setError('stats-results', data.detail || 'Erreur'); return; }
+        if (!data.length) { document.getElementById('stats-results').innerHTML = '<p class="status">Aucune donnée.</p>'; return; }
+        let html = '<div class="stat-grid">';
+        data.forEach(d => {
+          html += '<div class="stat-card"><div class="stat-label">→ ' + d.destination + '</div>';
+          html += '<div class="stat-val">' + d.count + '</div>';
+          html += '<div class="stat-sub">offre' + (d.count > 1 ? 's' : '') + ' · moy. ' + d.avgPrice.toFixed(0) + ' EUR</div></div>';
+        });
+        html += '</div>';
+        document.getElementById('stats-results').innerHTML = html;
+      } catch (e) {
+        setError('stats-results', 'Impossible de contacter l\'API.');
+      }
+    }
+
+    async function getMetrics() {
+      loading('stats-results');
+      try {
+        const r = await fetch(API + '/metrics');
+        const text = await r.text();
+        document.getElementById('stats-results').innerHTML = '<div class="metrics-box"><pre>' + text + '</pre></div>';
+      } catch (e) {
+        setError('stats-results', 'Impossible de contacter l\'API.');
+      }
+    }
+  </script>
+</body>
+
+</html>
