@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, Response
 
 from app.cache import pack_json, unpack_json
 from app.database import offers_collection, redis_client
-from app.metrics import record_cache_hit, render_prometheus
+from app.metrics import record_cache_hit, render_prometheus, render_summary
 
 router = APIRouter(tags=["stats"])
 
@@ -51,3 +51,8 @@ async def metrics():
         content=render_prometheus(),
         media_type="text/plain; version=0.0.4; charset=utf-8",
     )
+
+
+@router.get("/metrics/summary")
+async def metrics_summary():
+    return render_summary()

@@ -45,3 +45,30 @@ def render_prometheus() -> str:
     )
 
     return "\n".join(lines) + "\n"
+
+
+def render_summary() -> dict:
+    total_cache = cache_stats["hits"] + cache_stats["misses"]
+    hit_rate = cache_stats["hits"] / total_cache if total_cache else 0
+
+    routes = []
+    for route, stats in sorted(route_stats.items()):
+        avg_ms = stats["total_ms"] / stats["count"] if stats["count"] else 0
+        routes.append(
+            {
+                "route": route,
+                "requests": stats["count"],
+                "average_ms": round(avg_ms, 3),
+            }
+        )
+
+    return {
+        "routes": routes,
+        "cache": {
+            "hits": cache_stats["hits"],
+            "misses": cache_stats["misses"],
+            "total": total_cache,
+            "hit_rate": round(hit_rate, 3),
+            "hit_rate_percent": round(hit_rate * 100, 1),
+        },
+    }
