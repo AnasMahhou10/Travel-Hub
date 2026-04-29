@@ -1,8 +1,8 @@
-import json
+from fastapi import APIRouter, Query, Response
 
-from fastapi import APIRouter, Query
-
+from app.cache import pack_json, unpack_json
 from app.database import offers_collection, redis_client
+from app.metrics import record_cache_hit, render_prometheus
 
 router = APIRouter(tags=["stats"])
 
@@ -13,7 +13,9 @@ async def get_top_destinations(limit: int = Query(5, ge=1, le=20)):
 
     cached = await redis_client.get(cache_key)
     if cached:
-        return json.loads(cached)
+        record_cache_hit(True)
+        return unpack_json(cached)
+    record_cache_hit(False)
 
     pipeline = [
         {
@@ -38,7 +40,14 @@ async def get_top_destinations(limit: int = Query(5, ge=1, le=20)):
     ]
 
     stats = [row async for row in offers_collection.aggregate(pipeline)]
-
-    await redis_client.set(cache_key, json.dumps(stats), ex=120)
+    await redis_client.set(cache_key, pack_json(stats), ex=120)
 
     return stats
+
+
+@router.get("/metrics")
+async def metrics():
+    return Response(
+        content=render_prometheus(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )

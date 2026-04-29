@@ -7,6 +7,7 @@ import logging
 
 from .routes import offers, reco, auth, stats
 from .database import lifespan
+from .metrics import record_route
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -14,18 +15,19 @@ app = FastAPI(title="SupDeVinci Travel Hub", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[""],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=[""],
+    allow_headers=[""],
 )
 
 @app.middleware("http")
 async def log_duration(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
-    duration_ms = (time.perf_counter() - start) * 1000
+    duration_ms = (time.perf_counter() - start) 1000
     logging.info(f"{request.method} {request.url.path} → {response.status_code} ({duration_ms:.1f}ms)")
+    record_route(request.url.path, duration_ms)
     response.headers["X-Response-Time-Ms"] = f"{duration_ms:.1f}"
     return response
 

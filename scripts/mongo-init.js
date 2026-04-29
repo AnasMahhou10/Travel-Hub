@@ -46,6 +46,9 @@ db.offers.insertMany([
 ]);
 
 db.offers.createIndex({ from: 1, to: 1, price: 1 });
-db.offers.createIndex({ provider: "text" });
+db.offers.createIndex(
+  { provider: "text", "hotel.name": "text", "activity.title": "text" },
+  { name: "offer_text_search", default_language: "none" }
+);
 
 print("MongoDB seed OK — " + db.offers.countDocuments() + " offers inserted");
