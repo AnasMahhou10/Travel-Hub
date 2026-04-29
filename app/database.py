@@ -11,19 +11,22 @@ NEO4J_URL = os.getenv("NEO4J_URL", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASS = os.getenv("NEO4J_PASS", "password")
 
-# Redis
+#Redis
 redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
 
-# MongoDB
+#MongoDB
 mongo_client = AsyncIOMotorClient(MONGO_URL)
 db = mongo_client[MONGO_DB]
 offers_collection = db["offers"]
 
-# Neo4j
+#Neo4j
 neo4j_driver = AsyncGraphDatabase.driver(
     NEO4J_URL,
     auth=(NEO4J_USER, NEO4J_PASS)
 )
+
+def get_neo4j():
+    return neo4j_driver
 
 @asynccontextmanager
 async def lifespan(app):
