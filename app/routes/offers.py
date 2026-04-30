@@ -56,6 +56,16 @@ def serialize(offer) -> dict:
     offer["id"] = offer.pop("_id")
     return offer
 
+
+async def delete_offer_search_cache(from_city: str, to_city: str):
+    keys = [f"offers:{from_city}:{to_city}"]
+
+    async for key in redis_client.scan_iter(f"offers:{from_city}:{to_city}:*"):
+        keys.append(key)
+
+    if keys:
+        await redis_client.delete(*keys)
+
 # ── GET /offers ──────────────────────────────────────────────────────────────
 @router.get("/offers")
 async def get_offers(
@@ -66,7 +76,9 @@ async def get_offers(
 ):
     from_city = from_city.upper()
     to_city = to_city.upper()
-    cache_key = f"offers:{from_city}:{to_city}" if not q else f"offers:{from_city}:{to_city}:q:{q}:limit:{limit}"
+    cache_key = f"offers:{from_city}:{to_city}:limit:{limit}"
+    if q:
+        cache_key += f":q:{q}"
 
     # 1. Cache Redis
     cached = await redis_client.get(cache_key)
@@ -83,7 +95,7 @@ async def get_offers(
         else:
             filters["$text"] = {"$search": q}
 
-    cursor = offers_collection.find(filters).sort("price", 1).limit(limit)
+    cursor = offers_collection.find(filters).sort("price", 1).limit(int(limit))
 
     offers = [serialize(o) async for o in cursor]
 
@@ -111,7 +123,7 @@ async def create_offer(offer: OfferCreate):
         json.dumps({"offerId": offer_id, "from": document["from"], "to": document["to"]}),
     )
 
-    await redis_client.delete(f"offers:{document['from']}:{document['to']}")
+    await delete_offer_search_cache(document["from"], document["to"])
 
     return {"id": offer_id, **serialize({"_id": result.inserted_id, **document})}
 
