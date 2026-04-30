@@ -64,8 +64,28 @@ async def delete_offer_search_cache(from_city: str, to_city: str):
     async for key in redis_client.scan_iter(f"offers:{from_city}:{to_city}:*"):
         keys.append(key)
 
+    async for key in redis_client.scan_iter("stats:top-destinations:*"):
+        keys.append(key)
+
     if keys:
         await redis_client.delete(*keys)
+
+
+async def publish_new_offer(offer: dict):
+    message = {
+        "event": "offer.created",
+        "channel": OFFERS_NEW_CHANNEL,
+        "publishedAt": datetime.now(timezone.utc).isoformat(),
+        "offerId": offer["id"],
+        "from": offer["from"],
+        "to": offer["to"],
+        "provider": offer["provider"],
+        "price": offer["price"],
+        "currency": offer["currency"],
+        "offer": offer,
+    }
+
+    await redis_client.publish(OFFERS_NEW_CHANNEL, json.dumps(message))
 
 # ── GET /offers ──────────────────────────────────────────────────────────────
 @router.get("/offers")
@@ -119,12 +139,8 @@ async def create_offer(offer: OfferCreate):
     result = await offers_collection.insert_one(document)
     created_offer = serialize({"_id": result.inserted_id, **document})
 
-    await redis_client.publish(
-        "offers:new",
-        json.dumps({"offerId": offer_id, "from": document["from"], "to": document["to"]}),
-    )
-
-    await redis_client.delete(f"offers:{document['from']}:{document['to']}")
+    await publish_new_offer(created_offer)
+    await delete_offer_search_cache(document["from"], document["to"])
 
     return created_offer
 
