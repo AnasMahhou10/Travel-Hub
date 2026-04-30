@@ -23,6 +23,7 @@ services:
         condition: service_healthy
     volumes:
       - ./app:/code/app   # hot-reload en développement
+      - ./static:/code/static
 
   # ── Redis ────────────────────────────────────────────────────────────────────
   redis:

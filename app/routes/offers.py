@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -8,6 +8,7 @@ from app.database import redis_client, offers_collection, neo4j_driver
 from app.metrics import record_cache_hit
 
 router = APIRouter(tags=["offers"])
+OFFERS_NEW_CHANNEL = "offers:new"
 
 
 class Leg(BaseModel):
@@ -116,16 +117,16 @@ async def create_offer(offer: OfferCreate):
     document["to"] = document["to"].upper()
 
     result = await offers_collection.insert_one(document)
-    offer_id = str(result.inserted_id)
+    created_offer = serialize({"_id": result.inserted_id, **document})
 
     await redis_client.publish(
         "offers:new",
         json.dumps({"offerId": offer_id, "from": document["from"], "to": document["to"]}),
     )
 
-    await delete_offer_search_cache(document["from"], document["to"])
+    await redis_client.delete(f"offers:{document['from']}:{document['to']}")
 
-    return {"id": offer_id, **serialize({"_id": result.inserted_id, **document})}
+    return created_offer
 
 
 # ── GET /offers/{id} ─────────────────────────────────────────────────────────

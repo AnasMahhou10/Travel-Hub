@@ -14,7 +14,7 @@ async def get_top_destinations(limit: int = Query(5, ge=1, le=20)):
     cached = await redis_client.get(cache_key)
     if cached:
         record_cache_hit(True)
-        return unpack_json(cached)
+        return {"source": "redis", "data": unpack_json(cached)}
     record_cache_hit(False)
 
     pipeline = [
@@ -40,9 +40,9 @@ async def get_top_destinations(limit: int = Query(5, ge=1, le=20)):
     ]
 
     stats = [row async for row in offers_collection.aggregate(pipeline)]
-    await redis_client.set(cache_key, pack_json(stats), ex=120)
+    await redis_client.set(cache_key, pack_json(stats), ex=300)
 
-    return stats
+    return {"source": "mongodb", "data": stats}
 
 
 @router.get("/metrics")

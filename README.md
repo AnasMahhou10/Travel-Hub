@@ -62,6 +62,7 @@ Neo4j est initialisé avec `scripts/neo4j-init.cypher` pour créer un graphe de 
 
 ## Endpoints
 
+<<<<<<< HEAD
 | Route | Méthode | Description |
 | ----- | ------- | ----------- |
 | `/offers` | `GET` | Recherche les offres avec cache Redis |
@@ -74,6 +75,33 @@ Neo4j est initialisé avec `scripts/neo4j-init.cypher` pour créer un graphe de 
 | `/metrics` | `GET` | Métriques au format Prometheus |
 | `/metrics/summary` | `GET` | Métriques au format JSON pour l'interface |
 | `/health` | `GET` | Vérifie que l'API répond |
+=======
+| Route                   | Méthode | Description                              |
+| ----------------------- | ------- | ---------------------------------------- |
+| /offers                 | GET     | Recherche offres (cache Redis + MongoDB) |
+| /offers/{id}            | GET     | Détail offre + relatedOffers Neo4j       |
+| /reco                   | GET     | Recommandations villes via Neo4j         |
+| /login                  | POST    | Session Redis UUID TTL 900s              |
+| /stats/top-destinations | GET     | Agrégation MongoDB + cache Redis         |
+| /metrics                | GET     | Métriques Prometheus                     |
+| /notifications/stream   | GET     | Flux SSE branché sur Redis Pub/Sub       |
+
+## Pub/Sub Redis
+
+Quand `POST /offers` insere une offre dans MongoDB, l'API publie automatiquement un message JSON sur le canal Redis `offers:new`.
+
+Tester dans deux terminaux :
+
+```bash
+redis-cli SUBSCRIBE offers:new
+```
+
+```bash
+redis-cli PUBLISH offers:new '{"event":"offer.created","offerId":"demo","from":"PAR","to":"AMS"}'
+```
+
+Les clients web peuvent aussi ecouter `/notifications/stream`, qui transforme les messages Redis en Server-Sent Events.
+>>>>>>> 1c4e8df0bfaeb91aeaf7954ecc4cbdf85019f404
 
 ## Amina - Offres
 

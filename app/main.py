@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 import time
 import logging
 
-from .routes import offers, reco, auth, stats
+from .routes import offers, reco, auth, stats, notifications
 from .database import lifespan
 from .metrics import record_route
 
@@ -35,6 +35,7 @@ app.include_router(offers.router)
 app.include_router(reco.router)
 app.include_router(auth.router)
 app.include_router(stats.router)
+app.include_router(notifications.router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/health")
