@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -8,6 +8,7 @@ from app.database import redis_client, offers_collection, neo4j_driver
 from app.metrics import record_cache_hit
 
 router = APIRouter(tags=["offers"])
+OFFERS_NEW_CHANNEL = "offers:new"
 
 
 class Leg(BaseModel):
@@ -55,6 +56,40 @@ def serialize(offer) -> dict:
     offer = json_safe(offer)
     offer["id"] = offer.pop("_id")
     return offer
+
+
+async def invalidate_offer_caches(from_city: str, to_city: str):
+    cache_keys = [
+        f"offers:{from_city}:{to_city}",
+        "stats:top-destinations:5",
+    ]
+
+    async for key in redis_client.scan_iter(f"offers:{from_city}:{to_city}:q:*"):
+        cache_keys.append(key)
+
+    async for key in redis_client.scan_iter("stats:top-destinations:*"):
+        if key not in cache_keys:
+            cache_keys.append(key)
+
+    if cache_keys:
+        await redis_client.delete(*cache_keys)
+
+
+async def publish_new_offer(offer: dict):
+    message = {
+        "event": "offer.created",
+        "channel": OFFERS_NEW_CHANNEL,
+        "publishedAt": datetime.now(timezone.utc).isoformat(),
+        "offerId": offer["id"],
+        "from": offer["from"],
+        "to": offer["to"],
+        "provider": offer["provider"],
+        "price": offer["price"],
+        "currency": offer["currency"],
+        "offer": offer,
+    }
+
+    await redis_client.publish(OFFERS_NEW_CHANNEL, json.dumps(message))
 
 # ── GET /offers ──────────────────────────────────────────────────────────────
 @router.get("/offers")
@@ -104,16 +139,12 @@ async def create_offer(offer: OfferCreate):
     document["to"] = document["to"].upper()
 
     result = await offers_collection.insert_one(document)
-    offer_id = str(result.inserted_id)
+    created_offer = serialize({"_id": result.inserted_id, **document})
 
-    await redis_client.publish(
-        "offers:new",
-        json.dumps({"offerId": offer_id, "from": document["from"], "to": document["to"]}),
-    )
+    await publish_new_offer(created_offer)
+    await invalidate_offer_caches(document["from"], document["to"])
 
-    await redis_client.delete(f"offers:{document['from']}:{document['to']}")
-
-    return {"id": offer_id, **serialize({"_id": result.inserted_id, **document})}
+    return created_offer
 
 
 # ── GET /offers/{id} ─────────────────────────────────────────────────────────

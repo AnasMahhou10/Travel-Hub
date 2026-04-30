@@ -144,6 +144,13 @@
       margin-bottom: 12px;
     }
 
+    .form-row-notify {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
     .form-group {
       display: flex;
       flex-direction: column;
@@ -432,6 +439,71 @@
       line-height: 1.7;
     }
 
+    .metric-bar {
+      height: 7px;
+      background: var(--surface2);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .metric-fill {
+      height: 100%;
+      background: var(--text);
+      border-radius: 999px;
+    }
+
+    .route-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) 80px 90px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 13px;
+    }
+
+    .route-row:last-child {
+      border-bottom: none;
+    }
+
+    .route-name {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .route-value {
+      color: var(--text2);
+      text-align: right;
+    }
+
+    .notify-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 1rem;
+    }
+
+    .notify-item {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .notify-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .notify-sub {
+      color: var(--text2);
+      font-size: 12px;
+      margin-top: 4px;
+      font-family: 'DM Mono', monospace;
+      word-break: break-all;
+    }
+
     .session-info {
       font-size: 13px;
       color: var(--text2);
@@ -445,6 +517,10 @@
     @media (max-width: 520px) {
       .form-row {
         grid-template-columns: 1fr 1fr;
+      }
+
+      .form-row-notify {
+        grid-template-columns: 1fr;
       }
 
       .form-row> :last-child {
@@ -479,6 +555,7 @@
       <button class="tab" onclick="switchTab('reco', this)">Recommandations</button>
       <button class="tab" onclick="switchTab('login', this)">Connexion</button>
       <button class="tab" onclick="switchTab('stats', this)">Stats</button>
+      <button class="tab" onclick="switchTab('notifications', this)">Notifications</button>
     </div>
 
     <!-- ── SEARCH ───────────────────────────────────────────────────── -->
@@ -562,6 +639,47 @@
         </div>
       </div>
       <div id="stats-results"></div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ──────────────────────────────────────────── -->
+    <div id="panel-notifications" class="panel">
+      <div class="card">
+        <div class="meta">
+          Canal Redis <strong>offers:new</strong>
+          <span id="notif-status" class="badge badge-miss">déconnecté</span>
+        </div>
+        <div class="form-row-notify">
+          <div class="form-group">
+            <label>Départ</label>
+            <input id="n-from" type="text" value="PAR" maxlength="3" oninput="this.value=this.value.toUpperCase()" />
+          </div>
+          <div class="form-group">
+            <label>Destination</label>
+            <input id="n-to" type="text" value="AMS" maxlength="3" oninput="this.value=this.value.toUpperCase()" />
+          </div>
+          <div class="form-group">
+            <label>Provider</label>
+            <input id="n-provider" type="text" value="DemoAir" />
+          </div>
+          <div class="form-group">
+            <label>Prix</label>
+            <input id="n-price" type="number" value="199" min="1" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Date départ</label>
+            <input id="n-depart" type="date" value="2024-11-01" />
+          </div>
+          <div class="form-group">
+            <label>Date retour</label>
+            <input id="n-return" type="date" value="2024-11-05" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="createOfferFromForm()">Créer l'offre</button>
+          <button class="btn" onclick="document.getElementById('notifications-results').innerHTML=''">Effacer</button>
+        </div>
+      </div>
+      <div id="notifications-results" class="notify-list"></div>
     </div>
 
   </div>
@@ -690,11 +808,18 @@
     async function getStats() {
       loading('stats-results');
       try {
+        const t0 = Date.now();
         const r = await fetch(API + '/stats/top-destinations');
-        const data = await r.json();
-        if (!r.ok) { setError('stats-results', data.detail || 'Erreur'); return; }
+        const ms = Date.now() - t0;
+        const json = await r.json();
+        if (!r.ok) { setError('stats-results', json.detail || 'Erreur'); return; }
+        const data = json.data;
+        const source = json.source;
+        const hit = source === 'redis';
         if (!data.length) { document.getElementById('stats-results').innerHTML = '<p class="status">Aucune donnée.</p>'; return; }
-        let html = '<div class="stat-grid">';
+
+        let html = '<div class="meta">' + data.length + ' destination(s) · ' + ms + ' ms <span class="badge ' + (hit ? 'badge-hit">cache HIT — Redis' : 'badge-miss">cache MISS — MongoDB') + '</span></div>';
+        html += '<div class="stat-grid">';
         data.forEach(d => {
           html += '<div class="stat-card"><div class="stat-label">→ ' + d.destination + '</div>';
           html += '<div class="stat-val">' + d.count + '</div>';
@@ -710,13 +835,134 @@
     async function getMetrics() {
       loading('stats-results');
       try {
-        const r = await fetch(API + '/metrics');
-        const text = await r.text();
-        document.getElementById('stats-results').innerHTML = '<div class="metrics-box"><pre>' + text + '</pre></div>';
+        const r = await fetch(API + '/metrics/summary');
+        const data = await r.json();
+        if (!r.ok) { setError('stats-results', data.detail || 'Erreur'); return; }
+
+        const cache = data.cache;
+        const routes = data.routes || [];
+        const hitPercent = cache.hit_rate_percent || 0;
+        const missPercent = Math.max(0, 100 - hitPercent);
+        const totalRequests = routes.reduce((sum, route) => sum + route.requests, 0);
+        const maxAvg = Math.max(...routes.map(route => route.average_ms), 1);
+
+        let html = '<div class="meta">Métriques applicatives · Redis cache + routes API</div>';
+        html += '<div class="stat-grid">';
+        html += '<div class="stat-card"><div class="stat-label">Requêtes suivies</div><div class="stat-val">' + totalRequests + '</div><div class="stat-sub">toutes routes API</div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Cache HIT</div><div class="stat-val">' + cache.hits + '</div><div class="stat-sub">' + hitPercent.toFixed(1) + '% servis depuis Redis</div><div class="metric-bar"><div class="metric-fill" style="width:' + hitPercent + '%"></div></div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Cache MISS</div><div class="stat-val">' + cache.misses + '</div><div class="stat-sub">' + missPercent.toFixed(1) + '% recalculés via MongoDB</div><div class="metric-bar"><div class="metric-fill" style="width:' + missPercent + '%"></div></div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Total cache</div><div class="stat-val">' + cache.total + '</div><div class="stat-sub">lectures mesurées</div></div>';
+        html += '</div>';
+
+        html += '<div class="metrics-box">';
+        html += '<div class="meta">Temps moyen par endpoint</div>';
+        if (!routes.length) {
+          html += '<p class="status">Aucune route mesurée pour le moment.</p>';
+        } else {
+          routes.forEach(route => {
+            const pct = Math.min(100, (route.average_ms / maxAvg) * 100);
+            html += '<div class="route-row">';
+            html += '<div><div class="route-name">' + escapeHtml(route.route) + '</div><div class="metric-bar"><div class="metric-fill" style="width:' + pct + '%"></div></div></div>';
+            html += '<div class="route-value">' + route.requests + ' req.</div>';
+            html += '<div class="route-value">' + route.average_ms.toFixed(1) + ' ms</div>';
+            html += '</div>';
+          });
+        }
+        html += '</div>';
+
+        document.getElementById('stats-results').innerHTML = html;
       } catch (e) {
         setError('stats-results', 'Impossible de contacter l\'API.');
       }
     }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function addNotification(payload) {
+      const list = document.getElementById('notifications-results');
+      const now = new Date().toLocaleTimeString('fr-FR');
+      const routeFrom = payload.from || (payload.offer && payload.offer.from) || '?';
+      const routeTo = payload.to || (payload.offer && payload.offer.to) || '?';
+      const provider = payload.provider || (payload.offer && payload.offer.provider) || 'provider inconnu';
+      const price = payload.price || (payload.offer && payload.offer.price) || '';
+      const currency = payload.currency || (payload.offer && payload.offer.currency) || '';
+      const priceLabel = price ? ' · ' + Number(price).toFixed(2) + ' ' + escapeHtml(currency) : '';
+      const item = document.createElement('div');
+      item.className = 'notify-item';
+      item.innerHTML =
+        '<div class="notify-title">Nouvelle offre ' + escapeHtml(routeFrom) + ' → ' + escapeHtml(routeTo) + '</div>' +
+        '<div class="notify-sub">' + now + ' · ' + escapeHtml(provider) + priceLabel + ' · offerId: ' + escapeHtml(payload.offerId) + '</div>';
+      list.prepend(item);
+    }
+
+    function connectNotifications() {
+      const status = document.getElementById('notif-status');
+      const source = new EventSource(API + '/notifications/stream');
+
+      source.addEventListener('open', () => {
+        status.className = 'badge badge-hit';
+        status.textContent = 'connecté';
+      });
+
+      source.addEventListener('offer-new', event => {
+        addNotification(JSON.parse(event.data));
+      });
+
+      source.addEventListener('error', () => {
+        status.className = 'badge badge-miss';
+        status.textContent = 'reconnexion...';
+      });
+    }
+
+    async function createOfferFromForm() {
+      const from = document.getElementById('n-from').value.trim().toUpperCase();
+      const to = document.getElementById('n-to').value.trim().toUpperCase();
+      const provider = document.getElementById('n-provider').value.trim();
+      const price = Number(document.getElementById('n-price').value);
+      const departDate = document.getElementById('n-depart').value;
+      const returnDate = document.getElementById('n-return').value;
+
+      if (!from || !to || !provider || !price || !departDate || !returnDate) {
+        setError('notifications-results', 'Tous les champs sont requis.');
+        return;
+      }
+
+      const body = {
+        from,
+        to,
+        departDate: departDate + 'T00:00:00',
+        returnDate: returnDate + 'T00:00:00',
+        provider,
+        price,
+        currency: 'EUR',
+        legs: [{ flightNum: provider.slice(0, 2).toUpperCase() + Date.now().toString().slice(-3), dep: from, arr: to, duration: '1h30' }],
+        hotel: { name: to + ' Hotel', nights: 4, price: 300 },
+        activity: null
+      };
+
+      try {
+        const r = await fetch(API + '/offers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await r.json();
+        if (!r.ok) {
+          setError('notifications-results', data.detail || 'Erreur création offre');
+        }
+      } catch (e) {
+        setError('notifications-results', 'Impossible de créer l\'offre.');
+      }
+    }
+
+    connectNotifications();
   </script>
 </body>
 
