@@ -27,6 +27,23 @@ docker-compose up --build
 | /login                  | POST    | Session Redis UUID TTL 900s              |
 | /stats/top-destinations | GET     | Agrégation MongoDB + cache Redis         |
 | /metrics                | GET     | Métriques Prometheus                     |
+| /notifications/stream   | GET     | Flux SSE branché sur Redis Pub/Sub       |
+
+## Pub/Sub Redis
+
+Quand `POST /offers` insere une offre dans MongoDB, l'API publie automatiquement un message JSON sur le canal Redis `offers:new`.
+
+Tester dans deux terminaux :
+
+```bash
+redis-cli SUBSCRIBE offers:new
+```
+
+```bash
+redis-cli PUBLISH offers:new '{"event":"offer.created","offerId":"demo","from":"PAR","to":"AMS"}'
+```
+
+Les clients web peuvent aussi ecouter `/notifications/stream`, qui transforme les messages Redis en Server-Sent Events.
 
 ## Équipe
 

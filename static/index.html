@@ -439,6 +439,45 @@
       line-height: 1.7;
     }
 
+    .metric-bar {
+      height: 7px;
+      background: var(--surface2);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .metric-fill {
+      height: 100%;
+      background: var(--text);
+      border-radius: 999px;
+    }
+
+    .route-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) 80px 90px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 13px;
+    }
+
+    .route-row:last-child {
+      border-bottom: none;
+    }
+
+    .route-name {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+
+    .route-value {
+      color: var(--text2);
+      text-align: right;
+    }
+
     .notify-list {
       display: grid;
       gap: 8px;
@@ -769,11 +808,18 @@
     async function getStats() {
       loading('stats-results');
       try {
+        const t0 = Date.now();
         const r = await fetch(API + '/stats/top-destinations');
-        const data = await r.json();
-        if (!r.ok) { setError('stats-results', data.detail || 'Erreur'); return; }
+        const ms = Date.now() - t0;
+        const json = await r.json();
+        if (!r.ok) { setError('stats-results', json.detail || 'Erreur'); return; }
+        const data = json.data;
+        const source = json.source;
+        const hit = source === 'redis';
         if (!data.length) { document.getElementById('stats-results').innerHTML = '<p class="status">Aucune donnée.</p>'; return; }
-        let html = '<div class="stat-grid">';
+
+        let html = '<div class="meta">' + data.length + ' destination(s) · ' + ms + ' ms <span class="badge ' + (hit ? 'badge-hit">cache HIT — Redis' : 'badge-miss">cache MISS — MongoDB') + '</span></div>';
+        html += '<div class="stat-grid">';
         data.forEach(d => {
           html += '<div class="stat-card"><div class="stat-label">→ ' + d.destination + '</div>';
           html += '<div class="stat-val">' + d.count + '</div>';
@@ -809,11 +855,17 @@
     function addNotification(payload) {
       const list = document.getElementById('notifications-results');
       const now = new Date().toLocaleTimeString('fr-FR');
+      const routeFrom = payload.from || (payload.offer && payload.offer.from) || '?';
+      const routeTo = payload.to || (payload.offer && payload.offer.to) || '?';
+      const provider = payload.provider || (payload.offer && payload.offer.provider) || 'provider inconnu';
+      const price = payload.price || (payload.offer && payload.offer.price) || '';
+      const currency = payload.currency || (payload.offer && payload.offer.currency) || '';
+      const priceLabel = price ? ' · ' + Number(price).toFixed(2) + ' ' + escapeHtml(currency) : '';
       const item = document.createElement('div');
       item.className = 'notify-item';
       item.innerHTML =
-        '<div class="notify-title">Nouvelle offre ' + escapeHtml(payload.from) + ' → ' + escapeHtml(payload.to) + '</div>' +
-        '<div class="notify-sub">' + now + ' · offerId: ' + escapeHtml(payload.offerId) + '</div>';
+        '<div class="notify-title">Nouvelle offre ' + escapeHtml(routeFrom) + ' → ' + escapeHtml(routeTo) + '</div>' +
+        '<div class="notify-sub">' + now + ' · ' + escapeHtml(provider) + priceLabel + ' · offerId: ' + escapeHtml(payload.offerId) + '</div>';
       list.prepend(item);
     }
 
