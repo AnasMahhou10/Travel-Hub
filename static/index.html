@@ -835,9 +835,42 @@
     async function getMetrics() {
       loading('stats-results');
       try {
-        const r = await fetch(API + '/metrics');
-        const text = await r.text();
-        document.getElementById('stats-results').innerHTML = '<div class="metrics-box"><pre>' + text + '</pre></div>';
+        const r = await fetch(API + '/metrics/summary');
+        const data = await r.json();
+        if (!r.ok) { setError('stats-results', data.detail || 'Erreur'); return; }
+
+        const cache = data.cache;
+        const routes = data.routes || [];
+        const hitPercent = cache.hit_rate_percent || 0;
+        const missPercent = Math.max(0, 100 - hitPercent);
+        const totalRequests = routes.reduce((sum, route) => sum + route.requests, 0);
+        const maxAvg = Math.max(...routes.map(route => route.average_ms), 1);
+
+        let html = '<div class="meta">Métriques applicatives · Redis cache + routes API</div>';
+        html += '<div class="stat-grid">';
+        html += '<div class="stat-card"><div class="stat-label">Requêtes suivies</div><div class="stat-val">' + totalRequests + '</div><div class="stat-sub">toutes routes API</div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Cache HIT</div><div class="stat-val">' + cache.hits + '</div><div class="stat-sub">' + hitPercent.toFixed(1) + '% servis depuis Redis</div><div class="metric-bar"><div class="metric-fill" style="width:' + hitPercent + '%"></div></div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Cache MISS</div><div class="stat-val">' + cache.misses + '</div><div class="stat-sub">' + missPercent.toFixed(1) + '% recalculés via MongoDB</div><div class="metric-bar"><div class="metric-fill" style="width:' + missPercent + '%"></div></div></div>';
+        html += '<div class="stat-card"><div class="stat-label">Total cache</div><div class="stat-val">' + cache.total + '</div><div class="stat-sub">lectures mesurées</div></div>';
+        html += '</div>';
+
+        html += '<div class="metrics-box">';
+        html += '<div class="meta">Temps moyen par endpoint</div>';
+        if (!routes.length) {
+          html += '<p class="status">Aucune route mesurée pour le moment.</p>';
+        } else {
+          routes.forEach(route => {
+            const pct = Math.min(100, (route.average_ms / maxAvg) * 100);
+            html += '<div class="route-row">';
+            html += '<div><div class="route-name">' + escapeHtml(route.route) + '</div><div class="metric-bar"><div class="metric-fill" style="width:' + pct + '%"></div></div></div>';
+            html += '<div class="route-value">' + route.requests + ' req.</div>';
+            html += '<div class="route-value">' + route.average_ms.toFixed(1) + ' ms</div>';
+            html += '</div>';
+          });
+        }
+        html += '</div>';
+
+        document.getElementById('stats-results').innerHTML = html;
       } catch (e) {
         setError('stats-results', 'Impossible de contacter l\'API.');
       }
